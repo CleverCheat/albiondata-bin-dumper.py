@@ -3,6 +3,7 @@ import gzip
 import io
 import json
 import os
+import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import xml.parsers.expat
 from datetime import datetime
@@ -37,9 +38,10 @@ class BinaryDecrypter:
 
 
 class FileTraverser:
-    def __init__(self, base_directory, output_root):
+    def __init__(self, base_directory, output_root, minify=True):
         self.base_directory = base_directory
         self.output_root = output_root
+        self.minify = minify
         self.decrypter = BinaryDecrypter(
             key=bytes([48, 239, 114, 71, 66, 242, 4, 50]),
             iv=bytes([14, 166, 220, 137, 219, 237, 220, 79]),
@@ -55,6 +57,27 @@ class FileTraverser:
             return True
         except ET.ParseError:
             return False
+
+    def minify_xml(self, xml_content):
+        try:
+            root = ET.fromstring(xml_content)
+
+            def minify_element(element):
+                element.text = element.text.strip() if element.text else None
+
+                for key, value in element.attrib.items():
+                    element.attrib[key] = value.strip()
+
+                for child in element:
+                    minify_element(child)
+
+            minify_element(root)
+
+            minified_xml = ET.tostring(root, encoding="unicode")
+            return minified_xml
+
+        except ET.ParseError as e:
+            return xml_content
 
     def traverse_decrypt_and_save(self, directory, timestamp):
         content = os.listdir(directory)
@@ -82,6 +105,9 @@ class FileTraverser:
                     os.makedirs(output_directory, exist_ok=True)
 
                     if self.is_valid_xml(decrypted_content):
+                        if self.minify:
+                            decrypted_content = self.minify_xml(decrypted_content)
+
                         file_extension = ".xml"
                     else:
                         file_extension = ".txt"
@@ -93,8 +119,13 @@ class FileTraverser:
 
                     if file_extension == ".xml":
                         try:
+                            json_kwargs = (
+                                {"separators": (",", ":")}
+                                if self.minify
+                                else {"indent": 4}
+                            )
                             json_content = json.dumps(
-                                xmltodict.parse(decrypted_content), indent=4
+                                xmltodict.parse(decrypted_content), **json_kwargs
                             )
 
                             json_file_path = os.path.join(
@@ -123,6 +154,11 @@ class CommandLineDecrypter:
         parser.add_argument(
             "-o", "--output", help="The destination path for the decrypted files."
         )
+        parser.add_argument(
+            "--no-minify",
+            action="store_true",
+            help="Do not minify XML files during decryption.",
+        )
         self.args = parser.parse_args()
 
     def run(self):
@@ -130,7 +166,9 @@ class CommandLineDecrypter:
 
         output_root = self.args.output or os.path.join(os.getcwd(), "dumps")
 
-        file_traverser = FileTraverser(self.args.main_game_folder, output_root)
+        file_traverser = FileTraverser(
+            self.args.main_game_folder, output_root, not self.args.no_minify
+        )
 
         file_traverser.traverse_decrypt_and_save(self.args.main_game_folder, timestamp)
 
