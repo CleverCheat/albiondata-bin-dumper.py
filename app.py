@@ -130,9 +130,9 @@ class CommandLineDecrypter:
 
         output_root = self.args.output or os.path.join(os.getcwd(), "dumps")
 
-        file_traverser = FileTraverser(self.args.base_directory, output_root)
+        file_traverser = FileTraverser(self.args.main_game_folder, output_root)
 
-        file_traverser.traverse_decrypt_and_save(self.args.base_directory, timestamp)
+        file_traverser.traverse_decrypt_and_save(self.args.main_game_folder, timestamp)
 
 
 if __name__ == "__main__":
