@@ -1,0 +1,21 @@
+[tool.pdm.scripts]
+decrypt = "python app.py {args}"
+
+[project]
+name = "albiondata-bin-dumper.py"
+version = "0.1.0"
+description = "Decrypts Albion Online files, extracts data, and organizes into readable formats"
+authors = [
+    {name = "grantUser", email = "grantuser@skiff.com"},
+]
+dependencies = [
+    "pycryptodome>=3.20.0",
+    "xmltodict>=0.13.0",
+]
+requires-python = "==3.10.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
